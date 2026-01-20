@@ -12,8 +12,8 @@ module.exports = [
       'node_modules/**',
       'playwright-report/**',
       'test-results/**',
-      'reports/**',
-    ],
+      'reports/**'
+    ]
   },
 
   js.configs.recommended,
@@ -26,13 +26,13 @@ module.exports = [
       parserOptions: {
         project: './tsconfig.json',
         tsconfigRootDir: __dirname,
-        sourceType: 'module',
+        sourceType: 'module'
       },
-      globals: { ...globals.node },
+      globals: { ...globals.node }
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
-      prettier: prettierPlugin,
+      prettier: prettierPlugin
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
@@ -41,7 +41,10 @@ module.exports = [
 
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }]
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_' }
+      ]
     }
   },
 
@@ -49,10 +52,10 @@ module.exports = [
   {
     files: ['tests/**/*.spec.ts'],
     plugins: {
-      '@typescript-eslint': tsPlugin,
+      '@typescript-eslint': tsPlugin
     },
     rules: {
-      'no-console': 'warn'
+      'no-console': 'off'
     }
-  },
+  }
 ];
