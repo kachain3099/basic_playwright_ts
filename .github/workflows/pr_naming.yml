@@ -1,0 +1,65 @@
+name: PR Naming Check
+
+on:
+  pull_request:
+    # รันตอนเปิด PR / แก้ title / push commit เพิ่ม / ออกจาก draft
+    types: [opened, edited, reopened, ready_for_review, synchronize]
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title and source branch
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+
+          echo "PR title: $PR_TITLE"
+          echo "Source branch: $SOURCE_BRANCH"
+
+          # ✅ รูปแบบชื่อ PR ที่ยอมรับ:
+          # sprint_1-feature-login
+          # sprint_1-fix-login
+          # sprint_1-chore-update-eslint
+          # sprint_1-test-login
+          # sprint_1-refactor-pageobject
+          # hotfix-login-crash
+          #
+          # หมายเหตุ: ใช้ตัวเล็ก + ตัวเลข + _ - เท่านั้น (กันชื่อแปลกๆ)
+
+          if [[ "$PR_TITLE" =~ ^sprint_1-(feature|fix|chore|test|refactor)-[a-z0-9_-]+$ ]]; then
+            echo "✅ PR title OK (sprint_1 pattern)"
+          elif [[ "$PR_TITLE" =~ ^hotfix-[a-z0-9_-]+$ ]]; then
+            echo "✅ PR title OK (hotfix pattern)"
+          else
+            echo "❌ Invalid PR title: $PR_TITLE"
+            echo "::error::PR title must match one of these:"
+            echo "::error::  sprint_1-{feature|fix|chore|test|refactor}-{name}"
+            echo "::error::  hotfix-{name}"
+            exit 1
+          fi
+
+          # (Optional) ตรวจชื่อ branch ที่ส่ง PR มาด้วย (เปิดใช้ถ้าอยากบังคับ)
+          # ตัวอย่าง branch ที่ยอมรับ:
+          # sprint_1/feature-login
+          # sprint_1/fix-login
+          # hotfix/login-crash
+          #
+          # ถ้าคุณอยากบังคับ ให้ uncomment ส่วนนี้:
+
+          # if [[ "$SOURCE_BRANCH" =~ ^sprint_1\/(feature|fix|chore|test|refactor)-[a-z0-9_-]+$ ]]; then
+          #   echo "✅ Source branch OK (sprint_1 branch pattern)"
+          # elif [[ "$SOURCE_BRANCH" =~ ^hotfix\/[a-z0-9_-]+$ ]]; then
+          #   echo "✅ Source branch OK (hotfix branch pattern)"
+          # else
+          #   echo "❌ Invalid source branch: $SOURCE_BRANCH"
+          #   echo "::error::Source branch must match one of these:"
+          #   echo "::error::  sprint_1/{feature|fix|chore|test|refactor}-{name}"
+          #   echo "::error::  hotfix/{name}"
+          #   exit 1
+          # fi
