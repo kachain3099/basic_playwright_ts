@@ -18,14 +18,14 @@ jobs:
           PR_TITLE="${{ github.event.pull_request.title }}"
           echo "PR title: $PR_TITLE"
 
-          if [[ "$PR_TITLE" =~ ^sprint_-(feature|fix|chore|test|refactor)-[a-z0-9_-]+$ ]]; then
+          if [[ "$PR_TITLE" =~ ^sprint_1-(feature|fix|chore|test|refactor)-[a-z0-9_-]+$ ]]; then
             echo "✅ PR title OK"
           elif [[ "$PR_TITLE" =~ ^hotfix-[a-z0-9_-]+$ ]]; then
             echo "✅ PR title OK"
           else
             echo "❌ Invalid PR title: $PR_TITLE"
             echo "::error::PR title must match:"
-            echo "::error::  sprint_-{feature|fix|chore|test|refactor}-{name}"
+            echo "::error::  sprint_1-{feature|fix|chore|test|refactor}-{name}"
             echo "::error::  hotfix-{name}"
             exit 1
           fi
