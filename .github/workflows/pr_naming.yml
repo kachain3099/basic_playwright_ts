@@ -29,10 +29,8 @@ jobs:
             echo "✅ PR title OK (Hotfix pattern)"
           else
             echo "❌ Invalid PR title: $PR_TITLE"
-            echo "::error::PR title must match examples:"
-            echo "::error::  Sprint_1 feature: login"
-            echo "::error::  Sprint_1 fix: flaky test"
-            echo "::error::  Sprint_2 chore: update ci"
-            echo "::error::  Hotfix: login crash"
+            echo "::error::PR title must match:"
+            echo "::error::  sprint_1-{feature|fix|chore|test|refactor}-{name}"
+            echo "::error::  hotfix-{name}"
             exit 1
           fi
