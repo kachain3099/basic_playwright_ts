@@ -8,15 +8,17 @@ const prettierConfig = require('eslint-config-prettier');
 module.exports = [
   {
     ignores: [
+      'eslint.config.js',
       'node_modules/**',
       'playwright-report/**',
       'test-results/**',
-      'reports/**'
-    ]
+      'reports/**',
+    ],
   },
 
   js.configs.recommended,
 
+  // Base rules for all TypeScript
   {
     files: ['**/*.ts'],
     languageOptions: {
@@ -24,13 +26,13 @@ module.exports = [
       parserOptions: {
         project: './tsconfig.json',
         tsconfigRootDir: __dirname,
-        sourceType: 'module'
+        sourceType: 'module',
       },
-      globals: { ...globals.node }
+      globals: { ...globals.node },
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
-      prettier: prettierPlugin
+      prettier: prettierPlugin,
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
@@ -38,11 +40,19 @@ module.exports = [
       'prettier/prettier': 'error',
 
       '@typescript-eslint/no-floating-promises': 'error',
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_' }
-      ]
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }]
     }
-  }
+  },
+
+  // Overrides for test files only
+  {
+    files: ['tests/**/*.spec.ts'],
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
+    rules: {
+      'no-console': 'warn'
+    }
+  },
 ];
