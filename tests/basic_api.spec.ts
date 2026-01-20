@@ -17,13 +17,15 @@ const postSchema = {
     userId: { type: 'number' },
     id: { type: 'number' },
     title: { type: 'string', minLength: 1 },
-    body: { type: 'string' },
-  },
+    body: { type: 'string' }
+  }
 } as const;
 
 const validatePost = ajv.compile(postSchema);
 
-test('GET /posts/1 - Case1(status) Case2(schema AJV) Case3(body)', async ({ request }) => {
+test('GET /posts/1 - Case1(status) Case2(schema AJV) Case3(body)', async ({
+  request
+}) => {
   const res = await request.get(URL);
 
   // เคส 1: status code + status text (+ header json)
@@ -34,7 +36,7 @@ test('GET /posts/1 - Case1(status) Case2(schema AJV) Case3(body)', async ({ requ
   });
 
   const body = await res.json();
-  console.log('STUB_BASE_URL:', process.env.STUB_BASE_URL)
+  console.log('STUB_BASE_URL:', process.env.STUB_BASE_URL);
 
   // เคส 2: schema ด้วย AJV
   await test.step('Case 2: response schema (AJV)', async () => {

@@ -3,7 +3,10 @@ import { test, expect, APIResponse } from '@playwright/test';
 const BASE = 'https://jsonplaceholder.typicode.com';
 
 // helper: ตรวจ status + content-type + return json
-async function expectJsonResponse<T>(res: APIResponse, expectedStatus: number): Promise<T> {
+async function expectJsonResponse<T>(
+  res: APIResponse,
+  expectedStatus: number
+): Promise<T> {
   expect(res.status(), 'status code').toBe(expectedStatus);
 
   const ct = res.headers()['content-type'] ?? '';
@@ -17,7 +20,12 @@ test.describe('CRUD + response checks (JSONPlaceholder)', () => {
     const payload = { title: 'hello', body: 'world', userId: 1 };
 
     const res = await request.post(`${BASE}/posts`, { data: payload });
-    const body = await expectJsonResponse<{ id: number; title: string; body: string; userId: number }>(res, 201);
+    const body = await expectJsonResponse<{
+      id: number;
+      title: string;
+      body: string;
+      userId: number;
+    }>(res, 201);
 
     // schema-ish checks (type/structure)
     expect(body).toEqual(
@@ -25,7 +33,7 @@ test.describe('CRUD + response checks (JSONPlaceholder)', () => {
         id: expect.any(Number),
         title: expect.any(String),
         body: expect.any(String),
-        userId: expect.any(Number),
+        userId: expect.any(Number)
       })
     );
 
@@ -37,14 +45,24 @@ test.describe('CRUD + response checks (JSONPlaceholder)', () => {
 
   test('R: GET /posts/1', async ({ request }) => {
     const res = await request.get(`${BASE}/posts/1`);
-    const body = await expectJsonResponse<{ id: number; title: string; body: string; userId: number }>(res, 200);
+    const body = await expectJsonResponse<{
+      id: number;
+      title: string;
+      body: string;
+      userId: number;
+    }>(res, 200);
 
     expect(body.id).toBe(1);
     expect(body.title.length).toBeGreaterThan(0);
   });
 
   test('U: PUT /posts/1', async ({ request }) => {
-    const payload = { id: 1, title: 'updated', body: 'updated body', userId: 1 };
+    const payload = {
+      id: 1,
+      title: 'updated',
+      body: 'updated body',
+      userId: 1
+    };
 
     const res = await request.put(`${BASE}/posts/1`, { data: payload });
     const body = await expectJsonResponse<typeof payload>(res, 200);

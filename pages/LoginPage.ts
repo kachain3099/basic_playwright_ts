@@ -16,7 +16,9 @@ export class LoginPage {
   }
 
   async goto() {
-    await this.page.goto('https://10.137.20.37:8103/SFFWeb/pages/home/portal.jsf');
+    await this.page.goto(
+      'https://10.137.20.37:8103/SFFWeb/pages/home/portal.jsf'
+    );
   }
 
   async expectTitle() {

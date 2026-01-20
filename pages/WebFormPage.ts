@@ -1,10 +1,10 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export class WebFormPage {
   readonly page: Page;
 
   // URL
-  readonly url = "https://www.selenium.dev/selenium/web/web-form.html";
+  readonly url = 'https://www.selenium.dev/selenium/web/web-form.html';
 
   // Locators (รวมไว้ที่เดียว)
   readonly textInput: Locator;
@@ -32,26 +32,30 @@ export class WebFormPage {
     this.page = page;
 
     // แนะนำให้ใช้ getByRole/getByLabel เหมือนเดิม (ทนกว่า xpath/css)
-    this.textInput = page.getByRole("textbox", { name: "Text input" });
-    this.password = page.getByRole("textbox", { name: "Password" });
-    this.textarea = page.getByRole("textbox", { name: "Textarea" });
+    this.textInput = page.getByRole('textbox', { name: 'Text input' });
+    this.password = page.getByRole('textbox', { name: 'Password' });
+    this.textarea = page.getByRole('textbox', { name: 'Textarea' });
 
     this.disabledInput = page.locator('input[name="my-disabled"]');
     this.readonlyInput = page.locator('input[name="my-readonly"]');
 
-    this.dropdownSelect = page.getByLabel("Dropdown (select) Open this");
-    this.datalist = page.getByRole("combobox", { name: "Dropdown (datalist)" });
+    this.dropdownSelect = page.getByLabel('Dropdown (select) Open this');
+    this.datalist = page.getByRole('combobox', { name: 'Dropdown (datalist)' });
 
-    this.fileInputButton = page.getByRole("button", { name: "File input" });
-    this.checkedCheckbox = page.getByRole("checkbox", { name: "Checked checkbox" });
-    this.defaultCheckbox = page.getByRole("checkbox", { name: "Default checkbox" });
-    this.defaultRadioText = page.getByText("Default radio");
+    this.fileInputButton = page.getByRole('button', { name: 'File input' });
+    this.checkedCheckbox = page.getByRole('checkbox', {
+      name: 'Checked checkbox'
+    });
+    this.defaultCheckbox = page.getByRole('checkbox', {
+      name: 'Default checkbox'
+    });
+    this.defaultRadioText = page.getByText('Default radio');
 
-    this.colorPicker = page.getByRole("textbox", { name: "Color picker" });
-    this.datePicker = page.getByRole("textbox", { name: "Date picker" });
-    this.rangeSlider = page.getByRole("slider", { name: "Example range" });
+    this.colorPicker = page.getByRole('textbox', { name: 'Color picker' });
+    this.datePicker = page.getByRole('textbox', { name: 'Date picker' });
+    this.rangeSlider = page.getByRole('slider', { name: 'Example range' });
 
-    this.submitBtn = page.getByRole("button", { name: "Submit" });
+    this.submitBtn = page.getByRole('button', { name: 'Submit' });
   }
 
   async goto() {
@@ -67,11 +71,11 @@ export class WebFormPage {
 
   async assertDisabledAndReadonly() {
     await expect(this.disabledInput).toBeDisabled();
-    await expect(this.disabledInput).toHaveAttribute("disabled");
+    await expect(this.disabledInput).toHaveAttribute('disabled');
 
     await expect(this.readonlyInput).toBeEnabled();
     await expect(this.readonlyInput).not.toBeEditable();
-    await expect(this.readonlyInput).toHaveAttribute("readonly");
+    await expect(this.readonlyInput).toHaveAttribute('readonly');
   }
 
   async setDropdowns(selectValue: string, datalistValue: string) {
@@ -97,7 +101,7 @@ export class WebFormPage {
   async setDate(mmddyyyy: string) {
     await this.datePicker.pressSequentially(mmddyyyy, { delay: 100 });
     await expect(this.datePicker).toHaveValue(mmddyyyy);
-    await this.page.locator("body").click(); // close picker / blur
+    await this.page.locator('body').click(); // close picker / blur
   }
 
   async setRange(value: string) {

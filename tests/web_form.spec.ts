@@ -7,18 +7,28 @@ test('Test Web Form', async ({ page }) => {
 
   await page.getByRole('textbox', { name: 'Text input' }).fill('kachain.a');
   await page.getByRole('textbox', { name: 'Password' }).fill('1234567890');
-  await page.getByRole('textbox', { name: 'Textarea' }).pressSequentially('PV Apartment 111 (Room 1522)', { delay: 100 });
+  await page
+    .getByRole('textbox', { name: 'Textarea' })
+    .pressSequentially('PV Apartment 111 (Room 1522)', { delay: 100 });
 
   await expect(page.locator('input[name="my-disabled"]')).toBeDisabled();
-  await expect(page.locator('input[name="my-disabled"]')).toHaveAttribute('disabled');
+  await expect(page.locator('input[name="my-disabled"]')).toHaveAttribute(
+    'disabled'
+  );
 
   await expect(page.locator('input[name="my-readonly"]')).toBeEnabled();
   await expect(page.locator('input[name="my-readonly"]')).not.toBeEditable();
-  await expect(page.locator('input[name="my-readonly"]')).toHaveAttribute('readonly');
+  await expect(page.locator('input[name="my-readonly"]')).toHaveAttribute(
+    'readonly'
+  );
 
   await page.getByLabel('Dropdown (select) Open this').selectOption('2');
-  await page.getByRole('combobox', { name: 'Dropdown (datalist)' }).fill('New York');
-  await page.getByRole('button', { name: 'File input' }).setInputFiles('Home_Page.png');
+  await page
+    .getByRole('combobox', { name: 'Dropdown (datalist)' })
+    .fill('New York');
+  await page
+    .getByRole('button', { name: 'File input' })
+    .setInputFiles('Home_Page.png');
   await page.getByRole('checkbox', { name: 'Checked checkbox' }).uncheck();
   await page.getByRole('checkbox', { name: 'Default checkbox' }).check();
   await page.getByText('Default radio').click();
