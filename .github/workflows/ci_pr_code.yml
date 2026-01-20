@@ -32,22 +32,51 @@ jobs:
           node-version: 20
           cache: npm
 
+      # ✅ ทำ timestamp ไว้ใช้ตั้งชื่อ artifact + โชว์ใน summary
+      - name: Set run timestamp
+        run: |
+          echo "RUN_TS=$(date -u '+%Y-%m-%d_%H-%M-%S_UTC')" >> $GITHUB_ENV
+          echo "RUN_TS_COMPACT=$(date -u '+%Y%m%d-%H%M%S')" >> $GITHUB_ENV
+
       - run: npm ci
       - run: npx playwright install --with-deps
-      - run: npm run test
 
+      # ✅ รันเทส (ถ้า fail job จะ fail แต่เรายังทำ step ถัดไปได้ด้วย if: always())
+      - name: Run Playwright tests
+        run: npm run test
+
+      # ✅ อัปโหลด report แม้ fail
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ env.RUN_TS_COMPACT }}
           path: playwright-report/
           retention-days: 7
+          if-no-files-found: warn
 
+      # ✅ อัปโหลด test-results (trace/screenshot) แม้ fail
       - name: Upload Playwright test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ env.RUN_TS_COMPACT }}
           path: test-results/
           retention-days: 7
+          if-no-files-found: warn
+
+      # ✅ สรุปผลใน Summary ทั้ง Pass/Fail + ใส่เวลา + บอก artifact ชื่ออะไร
+      - name: Add Summary (Pass/Fail + Report)
+        if: always()
+        run: |
+          echo "## Playwright Smoke Result" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run time (UTC):** $RUN_TS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Reports" >> $GITHUB_STEP_SUMMARY
+          echo "- **HTML Report Artifact:** playwright-report-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Results Artifact:** test-results-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> Download artifacts from this run page → **Artifacts** section." >> $GITHUB_STEP_SUMMARY
