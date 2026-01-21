@@ -72,19 +72,6 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-      - name: Add test log to Summary (collapsible)
-        if: always()
-        run: |
-          echo "## Test Log" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "<details><summary>Click to expand (last 200 lines)</summary>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -n 200 playwright-run.log >> $GITHUB_STEP_SUMMARY || true
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "</details>" >> $GITHUB_STEP_SUMMARY
-
       - name: Add Summary (Pass/Fail + Report)
         if: always()
         run: |
