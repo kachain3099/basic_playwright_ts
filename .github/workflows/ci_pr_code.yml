@@ -64,6 +64,96 @@ jobs:
       - name: Run Playwright tests
         run: npm run test
 
+      # ✅ สร้าง summary.html จาก results.json เพื่อเอาไปเปิดบน Pages
+      - name: Build HTML summary from results.json
+        if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+
+          const input = 'playwright-report/results.json';
+          const outDir = 'playwright-report';
+          const outFile = `${outDir}/summary.html`;
+
+          if (!fs.existsSync(input)) {
+            console.log('No results.json found:', input);
+            process.exit(0);
+          }
+
+          const data = JSON.parse(fs.readFileSync(input, 'utf8'));
+          let total = 0, passed = 0, failed = 0, skipped = 0;
+          const failedItems = [];
+
+          function walkSuites(suites) {
+            for (const s of suites || []) {
+              walkSuites(s.suites);
+              for (const spec of s.specs || []) {
+                for (const t of spec.tests || []) {
+                  total++;
+                  const last = t.results?.[t.results.length - 1];
+                  const status = last?.status || t.status;
+                  if (status === 'passed') passed++;
+                  else if (status === 'failed') {
+                    failed++;
+                    failedItems.push({ title: spec.title, file: spec.file || '' });
+                  } else if (status === 'skipped') skipped++;
+                }
+              }
+            }
+          }
+
+          walkSuites(data.suites);
+
+          const esc = (s) =>
+            String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+          const rows = failedItems.slice(0, 50).map(x =>
+            `<tr><td>❌</td><td>${esc(x.title)}</td><td>${esc(x.file)}</td></tr>`
+          ).join('');
+
+          const html = `<!doctype html>
+          <html>
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width,initial-scale=1" />
+            <title>Playwright Test Summary</title>
+            <style>
+              body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px}
+              .cards{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
+              .card{padding:12px 14px;border:1px solid #ddd;border-radius:10px;min-width:160px}
+              table{border-collapse:collapse;width:100%;margin-top:12px}
+              th,td{border:1px solid #ddd;padding:8px;vertical-align:top}
+              th{background:#f6f6f6;text-align:left}
+              .muted{color:#666}
+              code{background:#f6f6f6;padding:2px 6px;border-radius:6px}
+            </style>
+          </head>
+          <body>
+            <h1>Playwright Test Summary</h1>
+            <p class="muted">Generated from <code>playwright-report/results.json</code></p>
+
+            <div class="cards">
+              <div class="card"><div>Total</div><b>${total}</b></div>
+              <div class="card"><div>Passed</div><b>${passed}</b></div>
+              <div class="card"><div>Failed</div><b>${failed}</b></div>
+              <div class="card"><div>Skipped</div><b>${skipped}</b></div>
+            </div>
+
+            <h2>Failed tests (top 50)</h2>
+            ${failedItems.length ? `
+            <table>
+              <thead><tr><th></th><th>Test</th><th>File</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>` : `<p>✅ No failed tests</p>`}
+
+            <p class="muted">Open <code>index.html</code> for full report.</p>
+          </body>
+          </html>`;
+
+          fs.writeFileSync(outFile, html);
+          console.log('Wrote:', outFile);
+          NODE
+
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
@@ -132,7 +222,6 @@ jobs:
           PR: #${PR}
           Run: ${RUN_URL}
           Pages: ${PAGE_URL}pr-${PR}/
-          Summary: ${PAGE_URL}pr-${PR}/summary.html
           EOF
 
           ESCAPED=$(python3 - <<'PY'
