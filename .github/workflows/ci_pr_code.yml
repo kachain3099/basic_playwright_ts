@@ -382,42 +382,42 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"to\":\"${LINE_TO}\",\"messages\":[{\"type\":\"text\",\"text\":${ESCAPED}}]}"
 
-  notify-line-push:
-    runs-on: ubuntu-latest
-    needs: smoke
-    if: always() && github.event_name == 'push'
-    steps:
-      - name: Send LINE notification (push)
-        env:
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          LINE_TO: ${{ secrets.LINE_TO }}
-          STATUS: ${{ needs.smoke.result }}
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-          TOTAL: ${{ needs.smoke.outputs.tests_total }}
-          PASSED: ${{ needs.smoke.outputs.tests_passed }}
-          FAILED: ${{ needs.smoke.outputs.tests_failed }}
-          SKIPPED: ${{ needs.smoke.outputs.tests_skipped }}
-        shell: bash
-        run: |
-          set -e
-          RUN_URL="https://github.com/${REPO}/actions/runs/${RUN_ID}"
+  # notify-line-push:
+  #   runs-on: ubuntu-latest
+  #   needs: smoke
+  #   if: always() && github.event_name == 'push'
+  #   steps:
+  #     - name: Send LINE notification (push)
+  #       env:
+  #         LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+  #         LINE_TO: ${{ secrets.LINE_TO }}
+  #         STATUS: ${{ needs.smoke.result }}
+  #         REPO: ${{ github.repository }}
+  #         RUN_ID: ${{ github.run_id }}
+  #         TOTAL: ${{ needs.smoke.outputs.tests_total }}
+  #         PASSED: ${{ needs.smoke.outputs.tests_passed }}
+  #         FAILED: ${{ needs.smoke.outputs.tests_failed }}
+  #         SKIPPED: ${{ needs.smoke.outputs.tests_skipped }}
+  #       shell: bash
+  #       run: |
+  #         set -e
+  #         RUN_URL="https://github.com/${REPO}/actions/runs/${RUN_ID}"
 
-          cat <<EOF > msg.txt
-          CI: ${STATUS}
-          Tests: ✅ ${PASSED} | ❌ ${FAILED} | ⏭️ ${SKIPPED} | Total ${TOTAL}
-          Repo: ${REPO}
-          Run: ${RUN_URL}
-          EOF
+  #         cat <<EOF > msg.txt
+  #         CI: ${STATUS}
+  #         Tests: ✅ ${PASSED} | ❌ ${FAILED} | ⏭️ ${SKIPPED} | Total ${TOTAL}
+  #         Repo: ${REPO}
+  #         Run: ${RUN_URL}
+  #         EOF
 
-          ESCAPED=$(python3 - <<'PY'
-          import json
-          with open("msg.txt", "r", encoding="utf-8") as f:
-              print(json.dumps(f.read()))
-          PY
-          )
+  #         ESCAPED=$(python3 - <<'PY'
+  #         import json
+  #         with open("msg.txt", "r", encoding="utf-8") as f:
+  #             print(json.dumps(f.read()))
+  #         PY
+  #         )
 
-          curl -sS -X POST https://api.line.me/v2/bot/message/push \
-            -H "Authorization: Bearer ${LINE_CHANNEL_ACCESS_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{\"to\":\"${LINE_TO}\",\"messages\":[{\"type\":\"text\",\"text\":${ESCAPED}}]}"
+  #         curl -sS -X POST https://api.line.me/v2/bot/message/push \
+  #           -H "Authorization: Bearer ${LINE_CHANNEL_ACCESS_TOKEN}" \
+  #           -H "Content-Type: application/json" \
+  #           -d "{\"to\":\"${LINE_TO}\",\"messages\":[{\"type\":\"text\",\"text\":${ESCAPED}}]}"
