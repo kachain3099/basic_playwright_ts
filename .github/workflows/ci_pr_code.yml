@@ -63,27 +63,41 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-      - name: Add test log to Summary (last 200 lines)
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-log-${{ env.RUN_TS_COMPACT }}
+          path: playwright-run.log
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Add test log to Summary (collapsible)
         if: always()
         run: |
+          echo "## Test Log" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Test Log (last 200 lines)" >> $GITHUB_STEP_SUMMARY
+          echo "<details><summary>Click to expand (last 200 lines)</summary>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           tail -n 200 playwright-run.log >> $GITHUB_STEP_SUMMARY || true
           echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
 
       - name: Add Summary (Pass/Fail + Report)
         if: always()
         run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Playwright Smoke Result" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Run time (UTC):** $RUN_TS" >> $GITHUB_STEP_SUMMARY
           echo "- **Workflow Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Reports" >> $GITHUB_STEP_SUMMARY
-          echo "- **HTML Report Artifact:** playwright-report-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
-          echo "- **Test Results Artifact:** test-results-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- **HTML Report:** playwright-report-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Results:** test-results-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Log:** test-log-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> Download artifacts from this run page → **Artifacts** section." >> $GITHUB_STEP_SUMMARY
