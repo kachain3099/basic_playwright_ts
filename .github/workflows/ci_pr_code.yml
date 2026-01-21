@@ -34,6 +34,10 @@ jobs:
       report_artifact: ${{ steps.meta.outputs.report_artifact }}
       pr_number: ${{ steps.meta.outputs.pr_number }}
       run_ts_utc: ${{ steps.meta.outputs.run_ts_utc }}
+      tests_total: ${{ steps.test_summary.outputs.total }}
+      tests_passed: ${{ steps.test_summary.outputs.passed }}
+      tests_failed: ${{ steps.test_summary.outputs.failed }}
+      tests_skipped: ${{ steps.test_summary.outputs.skipped }}
     steps:
       - uses: actions/checkout@v4
 
@@ -63,6 +67,42 @@ jobs:
 
       - name: Run Playwright tests
         run: npm run test
+
+      - name: Summarize test result (outputs)
+        id: test_summary
+        if: always()
+        shell: bash
+        run: |
+          node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('fs');
+
+          const file = 'playwright-report/results.json';
+          let total = 0, passed = 0, failed = 0, skipped = 0;
+
+          if (fs.existsSync(file)) {
+            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+
+            function walkSuites(suites) {
+              for (const s of suites || []) {
+                walkSuites(s.suites);
+                for (const spec of s.specs || []) {
+                  for (const t of spec.tests || []) {
+                    total++;
+                    const last = t.results?.[t.results.length - 1];
+                    const status = last?.status || t.status;
+                    if (status === 'passed') passed++;
+                    else if (status === 'failed') failed++;
+                    else if (status === 'skipped') skipped++;
+                  }
+                }
+              }
+            }
+
+            walkSuites(data.suites);
+          }
+
+          process.stdout.write(`total=${total}\npassed=${passed}\nfailed=${failed}\nskipped=${skipped}\n`);
+          NODE
 
       # ✅ สร้าง summary.html จาก results.json เพื่อเอาไปเปิดบน Pages
       - name: Build HTML summary from results.json
@@ -212,12 +252,17 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           PR: ${{ needs.smoke.outputs.pr_number }}
           PAGE_URL: ${{ needs.publish-report.outputs.page_url }}
+          TOTAL: ${{ needs.smoke.outputs.tests_total }}
+          PASSED: ${{ needs.smoke.outputs.tests_passed }}
+          FAILED: ${{ needs.smoke.outputs.tests_failed }}
+          SKIPPED: ${{ needs.smoke.outputs.tests_skipped }}
         run: |
           set -e
           RUN_URL="https://github.com/${REPO}/actions/runs/${RUN_ID}"
 
           cat <<EOF > msg.txt
           CI: ${STATUS}
+          Tests: ✅ ${PASSED} | ❌ ${FAILED} | ⏭️ ${SKIPPED} | Total ${TOTAL}
           Repo: ${REPO}
           PR: #${PR}
           Run: ${RUN_URL}
@@ -248,12 +293,17 @@ jobs:
           STATUS: ${{ needs.smoke.result }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
+          TOTAL: ${{ needs.smoke.outputs.tests_total }}
+          PASSED: ${{ needs.smoke.outputs.tests_passed }}
+          FAILED: ${{ needs.smoke.outputs.tests_failed }}
+          SKIPPED: ${{ needs.smoke.outputs.tests_skipped }}
         run: |
           set -e
           RUN_URL="https://github.com/${REPO}/actions/runs/${RUN_ID}"
 
           cat <<EOF > msg.txt
           CI: ${STATUS}
+          Tests: ✅ ${PASSED} | ❌ ${FAILED} | ⏭️ ${SKIPPED} | Total ${TOTAL}
           Repo: ${REPO}
           Run: ${RUN_URL}
           EOF
