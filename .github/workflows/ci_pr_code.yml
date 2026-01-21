@@ -53,6 +53,7 @@ jobs:
           TS="$(date -u '+%Y%m%d-%H%M%S')"
           echo "RUN_TS=$(date -u '+%Y-%m-%d_%H-%M-%S_UTC')" >> $GITHUB_ENV
           echo "RUN_TS_COMPACT=${TS}" >> $GITHUB_ENV
+
           echo "report_artifact=playwright-report-${TS}" >> "$GITHUB_OUTPUT"
           echo "run_ts_utc=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_OUTPUT"
 
@@ -67,42 +68,6 @@ jobs:
 
       - name: Run Playwright tests
         run: npm run test
-
-      - name: Summarize test result (outputs)
-        id: test_summary
-        if: always()
-        shell: bash
-        run: |
-          node - <<'NODE' >> "$GITHUB_OUTPUT"
-          const fs = require('fs');
-
-          const file = 'playwright-report/results.json';
-          let total = 0, passed = 0, failed = 0, skipped = 0;
-
-          if (fs.existsSync(file)) {
-            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-
-            function walkSuites(suites) {
-              for (const s of suites || []) {
-                walkSuites(s.suites);
-                for (const spec of s.specs || []) {
-                  for (const t of spec.tests || []) {
-                    total++;
-                    const last = t.results?.[t.results.length - 1];
-                    const status = last?.status || t.status;
-                    if (status === 'passed') passed++;
-                    else if (status === 'failed') failed++;
-                    else if (status === 'skipped') skipped++;
-                  }
-                }
-              }
-            }
-
-            walkSuites(data.suites);
-          }
-
-          process.stdout.write(`total=${total}\npassed=${passed}\nfailed=${failed}\nskipped=${skipped}\n`);
-          NODE
 
       # ✅ สร้าง summary.html จาก results.json เพื่อเอาไปเปิดบน Pages
       - name: Build HTML summary from results.json
@@ -194,6 +159,43 @@ jobs:
           console.log('Wrote:', outFile);
           NODE
 
+      # ✅ (เพิ่ม) สรุปตัวเลขเทสเป็น outputs ให้ job อื่นเอาไปใช้ (เช่น LINE noti)
+      - name: Summarize test result (outputs)
+        id: test_summary
+        if: always()
+        shell: bash
+        run: |
+          node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('fs');
+
+          const file = 'playwright-report/results.json';
+          let total = 0, passed = 0, failed = 0, skipped = 0;
+
+          if (fs.existsSync(file)) {
+            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+
+            function walkSuites(suites) {
+              for (const s of suites || []) {
+                walkSuites(s.suites);
+                for (const spec of s.specs || []) {
+                  for (const t of spec.tests || []) {
+                    total++;
+                    const last = t.results?.[t.results.length - 1];
+                    const status = last?.status || t.status;
+                    if (status === 'passed') passed++;
+                    else if (status === 'failed') failed++;
+                    else if (status === 'skipped') skipped++;
+                  }
+                }
+              }
+            }
+
+            walkSuites(data.suites);
+          }
+
+          process.stdout.write(`total=${total}\npassed=${passed}\nfailed=${failed}\nskipped=${skipped}\n`);
+          NODE
+
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
@@ -202,6 +204,91 @@ jobs:
           path: playwright-report/
           retention-days: 7
           if-no-files-found: warn
+
+      - name: Upload Playwright test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ env.RUN_TS_COMPACT }}
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Add Test Report Summary (from results.json)
+        if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+
+          const file = 'playwright-report/results.json';
+          if (!fs.existsSync(file)) {
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+              "## Playwright Test Summary\n" +
+              "- (No results.json found) Enable JSON reporter in playwright.config.ts\n\n" +
+              "Example:\n" +
+              "reporter: [['html', { open: 'never' }], ['json', { outputFile: 'playwright-report/results.json' }]],\n"
+            );
+            process.exit(0);
+          }
+
+          const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+          let total = 0, passed = 0, failed = 0, skipped = 0;
+          const failedList = [];
+
+          function walkSuites(suites) {
+            for (const s of suites || []) {
+              walkSuites(s.suites);
+              for (const spec of s.specs || []) {
+                for (const t of spec.tests || []) {
+                  total++;
+                  const last = t.results?.[t.results.length - 1];
+                  const status = last?.status || t.status;
+                  if (status === 'passed') passed++;
+                  else if (status === 'failed') {
+                    failed++;
+                    const fileName = spec.file ? ` (${spec.file})` : '';
+                    failedList.push(`- ❌ ${spec.title}${fileName}`);
+                  } else if (status === 'skipped') skipped++;
+                }
+              }
+            }
+          }
+
+          walkSuites(data.suites);
+
+          const lines = [];
+          lines.push('## Playwright Test Summary');
+          lines.push(`- Total: **${total}**`);
+          lines.push(`- ✅ Passed: **${passed}**`);
+          lines.push(`- ❌ Failed: **${failed}**`);
+          lines.push(`- ⏭️ Skipped: **${skipped}**`);
+          lines.push('');
+
+          if (failedList.length) {
+            lines.push('### Failed Tests (top 20)');
+            lines.push(...failedList.slice(0, 20));
+            if (failedList.length > 20) lines.push(`- ...and ${failedList.length - 20} more`);
+            lines.push('');
+          }
+
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          NODE
+
+      - name: Add Summary (Pass/Fail + Report)
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Playwright Smoke Result" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run time (UTC):** $RUN_TS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- **HTML Report:** ${{ steps.meta.outputs.report_artifact }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Results:** test-results-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> Download artifacts from this run page → **Artifacts** section." >> $GITHUB_STEP_SUMMARY
 
   publish-report:
     runs-on: ubuntu-latest
@@ -227,7 +314,13 @@ jobs:
 
           rm -rf public
           mkdir -p "public/pr-${PR}"
-          cp -R report/* "public/pr-${PR}/"
+
+          if [ -f "report/index.html" ]; then
+            cp -R report/* "public/pr-${PR}/"
+          else
+            echo "❌ report/index.html not found"
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -237,6 +330,13 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Add Pages links to Summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Web Report (GitHub Pages)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Full Report (index.html):** ${{ steps.deployment.outputs.page_url }}pr-${{ needs.smoke.outputs.pr_number }}/" >> $GITHUB_STEP_SUMMARY
 
   notify-line-pr:
     runs-on: ubuntu-latest
@@ -256,6 +356,7 @@ jobs:
           PASSED: ${{ needs.smoke.outputs.tests_passed }}
           FAILED: ${{ needs.smoke.outputs.tests_failed }}
           SKIPPED: ${{ needs.smoke.outputs.tests_skipped }}
+        shell: bash
         run: |
           set -e
           RUN_URL="https://github.com/${REPO}/actions/runs/${RUN_ID}"
@@ -297,6 +398,7 @@ jobs:
           PASSED: ${{ needs.smoke.outputs.tests_passed }}
           FAILED: ${{ needs.smoke.outputs.tests_failed }}
           SKIPPED: ${{ needs.smoke.outputs.tests_skipped }}
+        shell: bash
         run: |
           set -e
           RUN_URL="https://github.com/${REPO}/actions/runs/${RUN_ID}"
