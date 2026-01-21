@@ -63,14 +63,67 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-      - name: Upload test log
+      # ✅ สรุปผล Playwright ลง Summary แบบ “report” (ไม่ต้องโหลด)
+      # ต้องมีไฟล์ playwright-report/results.json (เพิ่ม json reporter ใน playwright.config.ts)
+      - name: Add Test Report Summary (from results.json)
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-log-${{ env.RUN_TS_COMPACT }}
-          path: playwright-run.log
-          retention-days: 7
-          if-no-files-found: warn
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+
+          const file = 'playwright-report/results.json';
+          if (!fs.existsSync(file)) {
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+              "## Playwright Test Summary\n" +
+              "- (No results.json found) Enable JSON reporter in playwright.config.ts\n\n" +
+              "Example:\n" +
+              "reporter: [['html', { open: 'never' }], ['json', { outputFile: 'playwright-report/results.json' }]],\n"
+            );
+            process.exit(0);
+          }
+
+          const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+          let total = 0, passed = 0, failed = 0, skipped = 0;
+          const failedList = [];
+
+          function walkSuites(suites) {
+            for (const s of suites || []) {
+              walkSuites(s.suites);
+              for (const spec of s.specs || []) {
+                for (const t of spec.tests || []) {
+                  total++;
+                  const last = t.results?.[t.results.length - 1];
+                  const status = last?.status || t.status;
+                  if (status === 'passed') passed++;
+                  else if (status === 'failed') {
+                    failed++;
+                    const fileName = spec.file ? ` (${spec.file})` : '';
+                    failedList.push(`- ❌ ${spec.title}${fileName}`);
+                  } else if (status === 'skipped') skipped++;
+                }
+              }
+            }
+          }
+
+          walkSuites(data.suites);
+
+          const lines = [];
+          lines.push('## Playwright Test Summary');
+          lines.push(`- Total: **${total}**`);
+          lines.push(`- ✅ Passed: **${passed}**`);
+          lines.push(`- ❌ Failed: **${failed}**`);
+          lines.push(`- ⏭️ Skipped: **${skipped}**`);
+          lines.push('');
+
+          if (failedList.length) {
+            lines.push('### Failed Tests (top 20)');
+            lines.push(...failedList.slice(0, 20));
+            if (failedList.length > 20) lines.push(`- ...and ${failedList.length - 20} more`);
+            lines.push('');
+          }
+
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          NODE
 
       - name: Add test log to Summary (collapsible)
         if: always()
@@ -98,6 +151,5 @@ jobs:
           echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- **HTML Report:** playwright-report-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
           echo "- **Test Results:** test-results-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
-          echo "- **Test Log:** test-log-$RUN_TS_COMPACT" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> Download artifacts from this run page → **Artifacts** section." >> $GITHUB_STEP_SUMMARY
