@@ -2,8 +2,8 @@ name: PR Naming Check
 
 on:
   pull_request:
-    types: [opened, edited, reopened, ready_for_review, synchronize]
     branches: [main]
+    types: [opened, edited, reopened, ready_for_review, synchronize]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -19,7 +19,6 @@ jobs:
           PR_TITLE="${{ github.event.pull_request.title }}"
           echo "PR title: $PR_TITLE"
 
-          # Put regex into variables to avoid bash parsing issues
           SPRINT_RE='^Sprint_[0-9]+[[:space:]_-]+(feature|fix|chore|test|refactor)[[:space:]_-]*:[[:space:]]+[A-Za-z0-9][A-Za-z0-9 _-]*$'
           HOTFIX_RE='^Hotfix[[:space:]_-]*:[[:space:]]+[A-Za-z0-9][A-Za-z0-9 _-]*$'
 
@@ -29,8 +28,12 @@ jobs:
             echo "✅ PR title OK (Hotfix pattern)"
           else
             echo "❌ Invalid PR title: $PR_TITLE"
-            echo "::error::PR title must match:"
-            echo "::error::  sprint_1-{feature|fix|chore|test|refactor}-{name}"
-            echo "::error::  hotfix-{name}"
+            echo "::error::PR title must match one of these formats:"
+            echo "::error::  Sprint_<N> <type>: <title>"
+            echo "::error::  Hotfix: <title>"
+            echo "::error::Examples:"
+            echo "::error::  Sprint_1 feature: Add login page"
+            echo "::error::  Sprint_2-fix: Resolve timeout"
+            echo "::error::  Hotfix: Urgent prod patch"
             exit 1
           fi

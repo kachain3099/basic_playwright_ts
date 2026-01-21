@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+    types: [closed]
 
 permissions:
   contents: read
@@ -13,6 +14,7 @@ permissions:
 
 jobs:
   quality:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
