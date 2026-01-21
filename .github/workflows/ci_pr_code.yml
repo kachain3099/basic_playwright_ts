@@ -65,7 +65,6 @@ jobs:
       - name: Run Playwright tests
         run: npm run test
 
-      # ✅ สร้าง summary.html จาก results.json เพื่อเอาไปเปิดบน Pages
       - name: Build HTML summary from results.json
         if: always()
         run: |
@@ -253,6 +252,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: smoke
     if: always() && github.event_name == 'pull_request'
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download Playwright report artifact
         uses: actions/download-artifact@v4
@@ -295,3 +296,64 @@ jobs:
           echo "## ✅ Web Report (GitHub Pages)" >> $GITHUB_STEP_SUMMARY
           echo "- **Full Report (index.html):** ${{ steps.deployment.outputs.page_url }}pr-${{ needs.smoke.outputs.pr_number }}/" >> $GITHUB_STEP_SUMMARY
           echo "- **Summary (summary.html):** ${{ steps.deployment.outputs.page_url }}pr-${{ needs.smoke.outputs.pr_number }}/summary.html" >> $GITHUB_STEP_SUMMARY
+
+  notify-line-pr:
+    runs-on: ubuntu-latest
+    needs: [smoke, publish-report]
+    if: always() && github.event_name == 'pull_request'
+    steps:
+      - name: Send LINE notification (PR + Pages link)
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_TO: ${{ secrets.LINE_TO }}
+          STATUS: ${{ needs.smoke.result }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          PR: ${{ needs.smoke.outputs.pr_number }}
+          PAGE_URL: ${{ needs.publish-report.outputs.page_url }}
+        run: |
+          set -e
+          RUN_URL="https://github.com/${REPO}/actions/runs/${RUN_ID}"
+          REPORT_URL="${PAGE_URL}pr-${PR}/"
+          SUMMARY_URL="${PAGE_URL}pr-${PR}/summary.html"
+
+          MSG="CI: ${STATUS}\nRepo: ${REPO}\nPR: #${PR}\nRun: ${RUN_URL}\nPages: ${REPORT_URL}\nSummary: ${SUMMARY_URL}"
+
+          ESCAPED=$(python3 - <<'PY'
+          import json, os
+          print(json.dumps(os.environ["MSG"]))
+          PY
+          )
+
+          curl -sS -X POST https://api.line.me/v2/bot/message/push \
+            -H "Authorization: Bearer ${LINE_CHANNEL_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"to\":\"${LINE_TO}\",\"messages\":[{\"type\":\"text\",\"text\":${ESCAPED}}]}"
+
+  notify-line-push:
+    runs-on: ubuntu-latest
+    needs: [smoke]
+    if: always() && github.event_name == 'push'
+    steps:
+      - name: Send LINE notification (push)
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_TO: ${{ secrets.LINE_TO }}
+          STATUS: ${{ needs.smoke.result }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -e
+          RUN_URL="https://github.com/${REPO}/actions/runs/${RUN_ID}"
+          MSG="CI: ${STATUS}\nRepo: ${REPO}\nRun: ${RUN_URL}"
+
+          ESCAPED=$(python3 - <<'PY'
+          import json, os
+          print(json.dumps(os.environ["MSG"]))
+          PY
+          )
+
+          curl -sS -X POST https://api.line.me/v2/bot/message/push \
+            -H "Authorization: Bearer ${LINE_CHANNEL_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"to\":\"${LINE_TO}\",\"messages\":[{\"type\":\"text\",\"text\":${ESCAPED}}]}"
