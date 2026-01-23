@@ -10,7 +10,8 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "playwright test",
-    "test:smoke": "playwright test"
+    "test:smoke": "playwright test",
+    "test:basic_api": "playwright test basic_api.spec.ts"
   },
   "keywords": [],
   "author": "",
